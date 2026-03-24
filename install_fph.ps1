@@ -66,10 +66,11 @@ function Install-Python {
     $url = "https://python.org/ftp/python/3.13.12/$installer"
     $tempPath = Join-Path $env:TEMP $installer
 
-    Write-Info "Скачиваем Python 3.13 из $url"
+    Write-Info "Скачиваю Python 3.13 из $url"
+    Write-Info "Он необходим, чтобы запустить FunPay Hub."
     Invoke-WebRequest -Uri $url -OutFile $tempPath
     
-    Write-Info "Устанавливаем Python..."
+    Write-Info "Устанавливаю Python 3.13..."
     $args = "/passive InstallAllUsers=0 PrependPath=1"
     Start-Process -FilePath $tempPath -ArgumentList $args -Wait
     Remove-Item $tempPath -Force
@@ -106,11 +107,12 @@ function Install-Git {
 
     $tempPath = Join-Path $env:TEMP $asset.name
 
-    Write-Info "Загружаем Git..."
+    Write-Info "Загружаю Git..."
+    Write-Info "Он необходим, чтобы загрузить FunPay Hub на компьютер."
     $headers = @{"User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"}
     Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $tempPath -Headers $headers -TimeoutSec 10
 
-    Write-Info "Устанавливаем Git..."
+    Write-Info "Устанавливаю Git..."
     Start-Process -FilePath $tempPath -ArgumentList "/SILENT /NORESTART /NOCANCEL /SP-" -Wait
     Remove-Item $tempPath -Force
     Update-PATH
@@ -123,7 +125,7 @@ function Select-InstallDir {
     try {
         Add-Type -AssemblyName System.Windows.Forms | Out-Null
         $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $dialog.Description = "Выберите папку, куда хотите установить FunPay Hub."
+        $dialog.Description = "Выберите пустую папку, куда хотите установить FunPay Hub. Важно: папка должна быть пустая, поэтому заранее создайте ее в удобном для вас месте."
         $dialog.ShowNewFolderButton = $true
         $dialog.SelectedPath = [Environment]::GetFolderPath("Desktop")
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
@@ -176,7 +178,7 @@ function Bootstrap {
         Write-WarnMsg "requirements.txt не найден. Пропускаю установку зависимостей."
     }
     else {
-        Write-Info "Устанавливают зависимости..."
+        Write-Info "Устанавливаю зависимости..."
         & $python -m pip install -r requirements.txt
     }
 
@@ -228,7 +230,12 @@ if (-not $git) {
 Write-Info "Git обнаружен."
 
 
-Write-Info "Выберите директорию, куда хотите установить FunPay Hub."
+Write-Info (
+"Создайте пустую папку, куда хотите установить FunPay Hub, и укажите ее.
+Сейчас должно появится окно выбора папки, но оно может быть скрыто за другими окнами / появится на другом мониторе.
+Если вы его не видите, поищите его с помощью Alt+Tab."
+)
+
 $install_dir = Select-InstallDir
 if (-not $install_dir) {
     throw "Директория установки не была выбрана."
@@ -238,9 +245,19 @@ Write-Info "Начинаем процесс установки FunPay Hub в $in
 Clone-Hub -git $git -path $install_dir
 Bootstrap -python $python -python_args $python_args -path $install_dir
 
-Write-Info "FunPay Hub успешно установлен. Для запуска используйте файл run_funpayhub.bat."
+Clear-Host
+Write-WarnMsg "========================================"
+Write-Info "FunPay Hub успешно установлен."
+Write-Info "Вы можете запустить его прямо сейчас."
+Write-Info "После запуска вам нужно будет перейти в вашего Telegram бота и отправить ему указанный вами пароль, чтобы получить доступ."
+Write-Info "В будущем используйте файл run_funpayhub.bat в папке бота, чтобы запустить FPH (просто дважды кликните по этому файлу)."
+Write-Info ""
+Write-Info "Если у вас есть какие-либо вопросы - мы всегда рады помочь в Telegram чате:"
+Write-WarnMsg "https://t.me/funpay_hub"
+Write-WarnMsg "========================================"
+Write-Info ""
 
-$answer = Read-Host "Хотите запустить FunPay Hub сейчас? [Y/n]"
+$answer = Read-Host "Хотите запустить FunPay Hub сейчас? (Введите Y - если да, N - если нет)"
 if ($answer -match "^[YyДд]" -or (-not $answer)) {
     Start-Process cmd.exe -ArgumentList "/k", "run_funpayhub.bat"
 } else {
